@@ -18,4 +18,12 @@ defmodule PipeToTest do
 
     assert result == %{a: 1, b: 2, c: 3, d: 4, e: 5}
   end
+
+  test "pipe into mutiple target at once" do
+    result = [1, 2, 3]
+    ~> Enum.reduce(_, _, fn x, acc -> [x | acc] end)
+    ~> Enum.reduce(_, _, fn x, acc -> [x | acc] end)
+
+    assert result == [3, 2, 1, 1, 2, 3, 3, 2, 1, 1, 2, 3]
+  end
 end

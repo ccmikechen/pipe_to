@@ -23,13 +23,20 @@ defmodule PipeTo do
 
         iex> [1, 2, 3] ~> Enum.take(2)
         [1, 2]
+
+  You can also specify multiple target positions.
+
+  ### Examples
+
+        iex> 10 ~> Kernel.+(_, _)
+        20
   """
   defmacro left ~> right do
     [{h, _} | t] = __MODULE__.unpipe({:~>, [], [left, right]})
 
     # Bascially follows `lib/elixir/lib/kernel` left |> right
     # https://github.com/elixir-lang/elixir/blob/master/lib/elixir/lib/kernel.ex#L3134
-    fun = fn {x, pos}, acc ->
+    fun = fn {x, positions}, acc ->
       case x do
         {op, _, [_]} when op == :+ or op == :- ->
           message =
@@ -42,7 +49,9 @@ defmodule PipeTo do
           :ok
       end
 
-      Macro.pipe(acc, x, pos)
+      positions
+      |> Enum.reverse()
+      |> Enum.reduce(x, &Macro.pipe(acc, &2, &1))
     end
 
     :lists.foldl(fun, h, t)
@@ -66,26 +75,33 @@ defmodule PipeTo do
   end
 
   defp unpipe(ast = {_, _, args}, acc) when is_list(args) do
-    placeholder_index =
-      Enum.find_index(args, &is_placeholder/1)
+    positions =
+      args
+      |> Enum.with_index()
+      |> Enum.reduce([], fn {arg, index}, positions ->
+        cond do
+          placeholder?(arg) -> [index | positions]
+          true -> positions
+        end
+      end)
+    fixed_ast = remove_placeholders(ast, positions)
 
-    fixed_ast = remove_placeholder(ast, placeholder_index)
-
-    [{fixed_ast, pipe_position(placeholder_index)} | acc]
+    [{fixed_ast, pipe_positions(positions)} | acc]
   end
 
   defp unpipe(other, acc) do
     [{other, 0} | acc]
   end
 
-  defp is_placeholder({:_, _, _}),  do: true
-  defp is_placeholder(_), do: false
+  defp placeholder?({:_, _, _}),  do: true
+  defp placeholder?(_), do: false
 
-  defp pipe_position(nil),   do: 0
-  defp pipe_position(index), do: index
-
-  defp remove_placeholder(ast, nil), do: ast
-  defp remove_placeholder({fun, meta, args}, index) do
+  defp remove_placeholders(ast, []), do: ast
+  defp remove_placeholders({fun, meta, args}, [index | rest]) do
     {fun, meta, List.delete_at(args, index)}
+    |> remove_placeholders(rest)
   end
+
+  defp pipe_positions([]), do: [0]
+  defp pipe_positions(positions), do: positions
 end

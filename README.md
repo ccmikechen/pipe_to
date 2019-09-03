@@ -39,6 +39,13 @@ In fact, if you don't specify the position with `_`, it acts just like normal `|
 # 8
 ```
 
+You can also specify multiple target positions.
+
+```elixir
+> 10 ~> Kernel.+(_, _)
+# 20
+```
+
 ## Override the `Kernel.|>/2`
 Since `~>` is the enhanced pipe operator, you can override the `Kernel.|>/2` with it.
 
@@ -87,5 +94,4 @@ Apache 2
 
 ## TODO
 * Discard the default operator, user should specify the operator expicitly, to work with lib like Witchcraft better.
-* Pipe into mutiple target at once
 * Pipe into target in nested expression, instead of only the shallowest level like now.
